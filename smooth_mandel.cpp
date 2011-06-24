@@ -75,10 +75,8 @@ public:
 public:
     Pixel() { }
 
-    Pixel(double left, double top, double width,
-          float screen_x, float screen_y)
-    : _left(left), _top(top), _width(width), _final(false),
-      _screen_x(screen_x), _screen_y(screen_y)
+    Pixel(double left, double top, double width)
+    : _left(left), _top(top), _width(width), _final(false)
     {
         // Setup the sub-iterates.
         double sub_width = _width / 4.0;
@@ -125,13 +123,6 @@ public:
         return _final;
     }
 
-    // Assumes opengl is already in GL_POINTS mode.
-    void draw()
-    {
-        glColor3f(_red, _green, _blue);
-        glVertex2d(_screen_x, _screen_y);
-    }
-    
     void color(unsigned char & r, unsigned char & g, unsigned char & b)
     {
         r = _red; g = _green; b = _blue;
@@ -160,7 +151,6 @@ private:
     // Subsampling for smoothness.
     ComplexIterate _sub_iterates[32];
     double _left, _top, _width;
-    float _screen_x, _screen_y;
     unsigned char _red, _green, _blue;
 };
 
@@ -190,8 +180,8 @@ void colorMap1(bool esc, double iter, float & r, float & g, float & b)
     b = (1.0 - alpha) * b_start + alpha * b_end;
 }
 
-const unsigned window_width = 960;
-const unsigned window_height = 960;
+const int window_width = 960;
+const int window_height = 960;
 
 GLuint mandel_texture;
 unsigned char texture_data[window_width * window_height * 3];
@@ -213,9 +203,10 @@ void doLine()
     }
 }
 
+unsigned iteration = 0;
 void idleFunc()
 {
-    static unsigned time = 0;
+    static unsigned iteration = 0;
     const unsigned thread_count = 20;
     boost::thread threads[thread_count];
 
@@ -231,8 +222,8 @@ void idleFunc()
         threads[i].join();
     }
 
-    ++time;
-    cout << time << endl;
+    ++iteration;
+    //cout << iteration << endl;
     glutPostRedisplay();
 }
 
@@ -257,15 +248,66 @@ void renderScene()
     glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
 
     glBegin(GL_QUADS);
-		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+		glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+		glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+		glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+		glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
     glEnd();
     glFlush();
 }
 
 Pixel::ColorMapFunc Pixel::colorMap = colorMap1;
+static double real_center = -0.85, imag_center = 0.0, width = 2.8;
+
+void initialize(double real_center, double imag_center, double width)
+{
+    cout << "real: " << real_center << " imag: " << imag_center
+      << " width: " << width << endl;
+    double real_start = real_center - width / 2.0;
+    double real, imag = imag_center + width / 2.0;
+    double real_inc =
+      width / static_cast<double>(window_width);
+    double imag_inc =
+      width / static_cast<double>(window_height);
+
+    unsigned x, y;
+    for (y = 0; y < window_height; ++y, imag -= imag_inc) {
+        for (real = real_start, x = 0; x < window_width; ++x,real += real_inc) {
+              new (&pixels[y][x]) Pixel(real, imag, real_inc);
+        }
+    }
+    iteration = 0;
+}
+
+void mouseHandler(int button, int state, int x, int y)
+{
+    bool button_pressed = false;
+    double factor;
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        button_pressed = true;
+        factor = 0.666667;
+    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+        button_pressed = true;
+        factor = 1.5;
+    }
+
+    if (button_pressed) {
+        // Get the real coordinates of x and y
+        double screen_x = (double)(x - (window_width / 2)) /
+          ((double)window_width / 2.0);
+        double screen_y = (double)((window_height / 2) - y) /
+          ((double)window_height / 2.0);
+
+        double new_x = screen_x * (width / 2.0) + real_center;
+        double new_y = screen_y * (width / 2.0) + imag_center;
+        double new_width = width * factor;
+
+        initialize(new_x, new_y, new_width);
+        real_center = new_x;
+        imag_center = new_y;
+        width = new_width;
+    }
+}
 
 int main(int argc, char * argv[])
 {
@@ -275,36 +317,14 @@ int main(int argc, char * argv[])
     glutInitWindowPosition(100,100);
     glutInitWindowSize(window_width, window_height);
     glutCreateWindow("Gradual Mandelbrot Rendering");
-
-    double real_start = -2.25;
-    double real = -2.0, imag = 1.4;
-    double real_width = 2.8;
-    double imag_height = 2.8;
-    double real_inc =
-      real_width / static_cast<double>(window_width);
-    double imag_inc =
-      imag_height / static_cast<double>(window_height);
-
-    float screen_x_start = -1.0;
-    float screen_x = -1.0, screen_y = 1.0;
-    float screen_width = 2.0;
-    float screen_height = 2.0;
-    float x_inc = screen_width / static_cast<float>(window_width);
-    float y_inc = screen_height / static_cast<float>(window_height);
-
-    unsigned x, y;
-    for (y = 0; y < window_height; ++y, imag -= imag_inc, screen_y -= y_inc) {
-        for (screen_x = screen_x_start, real = real_start, x = 0;
-        x < window_width; ++x, real += real_inc, screen_x += x_inc) {
-              new (&pixels[y][x]) Pixel(real, imag, real_inc,
-                        screen_x + x_inc/2.0, screen_y + y_inc/2.0);
-        }
-    }
+    
+    initialize(real_center, imag_center, width);
 
     glEnable(GL_TEXTURE_2D);
     glGenTextures(1, &mandel_texture);
     glutDisplayFunc(renderScene);
     glutIdleFunc(idleFunc);
+    glutMouseFunc(mouseHandler);
 
     // enter GLUT event processing cycle
     glutMainLoop();
