@@ -1,0 +1,2 @@
+This code depends on c++-0x, gcc, and the boost c++ library, preferably version
+1.42 and up.
