@@ -17,12 +17,13 @@ public:
     { }
 
     ComplexIterate(double r, double i)
-    : _start(r, i), _value(_start), _escaped(false), _count(0)
+    : _start(r, i), _value(_start), _slow_value(_start), _escaped(false),
+      _bounded(false), _count(0)
     { }
     
     void iterate()
     {
-        if (!_escaped) {
+        if (!_escaped && !_bounded) {
             _value = _value * _value + _start;
             auto abs_sqr = _value.real()*_value.real() +
             _value.imag()*_value.imag();
@@ -30,6 +31,17 @@ public:
                 _escaped = true;
                 _adjusted_count = _count -
                   log(log(abs_sqr) / log(escape_value))/log(2.0);
+            } else {
+                ValueType diff = _value - _slow_value;
+                auto abs_sqr = diff.real()*diff.real() +
+                  diff.imag()*diff.imag();
+                if (abs_sqr < 0.00000000000001) {
+                    _bounded = true;
+                }
+            }
+
+            if (_count > 0 && _count % 2 == 0) {
+                _slow_value = _slow_value * _slow_value + _start;
             }
             ++_count;
         }
@@ -54,11 +66,18 @@ public:
         return _escaped;
     }
 
+    bool bounded() const
+    {
+        return _bounded;
+    }
+
     static double escape_value;
 
 private:
     ValueType _start;
     ValueType _value;
+    ValueType _slow_value;
+    bool _bounded;
     bool _escaped;
     unsigned _count;
     double _adjusted_count;
@@ -70,7 +89,7 @@ double ComplexIterate::escape_value = 10E100;
 class Pixel
 {
 public:
-    typedef void (*ColorMapFunc)(bool, double, float &, float &, float &);
+    typedef void (*ColorMapFunc)(bool, bool, double, float &, float &, float &);
 
 public:
     Pixel() { }
@@ -108,7 +127,7 @@ public:
         bool any_live = false;
         for (unsigned i = 0; i < 32; ++i) {
             _sub_iterates[i].iterate();
-            if (!_sub_iterates[i].escaped()) {
+            if (!_sub_iterates[i].escaped() && !_sub_iterates[i].bounded()) {
                 any_live = true;
             }
         }
@@ -133,7 +152,7 @@ public:
         float r_avg = 0.0, g_avg = 0.0, b_avg = 0.0;
         for (unsigned i = 0; i < 32; ++i) {
             float red, green, blue;
-            colorMap(_sub_iterates[i].escaped(),
+            colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].bounded(),
               _sub_iterates[i].getCount(), red, green, blue);
             r_avg += red / 32.0;
             g_avg += green / 32.0;
@@ -155,9 +174,10 @@ private:
 };
 
 
-void colorMap1(bool esc, double iter, float & r, float & g, float & b)
+void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
+  float & b)
 {
-    if (!esc) {
+    if (!esc && !bound) {
         r = 0.0; g = 0.0; b = 0.0;
         return;
     }
@@ -178,6 +198,12 @@ void colorMap1(bool esc, double iter, float & r, float & g, float & b)
     r = (1.0 - alpha) * r_start + alpha * r_end;
     g = (1.0 - alpha) * g_start + alpha * g_end;
     b = (1.0 - alpha) * b_start + alpha * b_end;
+
+    if (bound) {
+        r /= 4.0;
+        g /= 4.0;
+        b /= 4.0;
+    }
 }
 
 const int window_width = 960;
@@ -206,7 +232,6 @@ void doLine()
 unsigned iteration = 0;
 void idleFunc()
 {
-    static unsigned iteration = 0;
     const unsigned thread_count = 20;
     boost::thread threads[thread_count];
 
@@ -223,7 +248,9 @@ void idleFunc()
     }
 
     ++iteration;
-    //cout << iteration << endl;
+    if (iteration % 100 == 0) {
+        cout << "iteration " << iteration << endl;
+    }
     glutPostRedisplay();
 }
 
