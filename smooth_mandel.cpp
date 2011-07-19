@@ -7,6 +7,12 @@
 
 using namespace std;
 
+static double real_center = -0.85, imag_center = 0.0, width = 2.8;
+const int window_width = 800;
+const int window_height = 800;
+
+double starting_epsilon;
+
 class ComplexIterate
 {
 public:
@@ -32,11 +38,14 @@ public:
                 _adjusted_count = _count -
                   log(log(abs_sqr) / log(escape_value))/log(2.0);
             } else {
-                ValueType diff = _value - _slow_value;
-                auto abs_sqr = diff.real()*diff.real() +
-                  diff.imag()*diff.imag();
-                if (abs_sqr < 0.00000000000001) {
-                    _bounded = true;
+                const double epsilon = 0.00000000000001;
+                //double epsilon = starting_epsilon / (_count + 1);
+                const double real_diff = _value.real() - _slow_value.real();
+                if (real_diff < epsilon && real_diff > -epsilon) {
+                    const double imag_diff = _value.imag() - _slow_value.imag();
+                    if (imag_diff < epsilon && imag_diff > -epsilon) {
+                        _bounded = true;
+                    }
                 }
             }
 
@@ -85,6 +94,8 @@ private:
 
 double ComplexIterate::escape_value = 10E100;
 
+const unsigned subsample_width = 2;
+const unsigned subsamples = 2*subsample_width*subsample_width;
 
 class Pixel
 {
@@ -98,20 +109,24 @@ public:
     : _left(left), _top(top), _width(width), _final(false)
     {
         // Setup the sub-iterates.
-        double sub_width = _width / 4.0;
+        double sub_width = _width / static_cast<double>(subsample_width);
         double quarter_width = sub_width / 4.0;
         double three_width = sub_width / 2.0 + quarter_width;
         double x, y;
         unsigned i, k;
         unsigned iter = 0;
-        for (x = left + quarter_width, i = 0; i < 4; x += sub_width, ++i) {
-            for (y = top - quarter_width, k = 0; k < 4; y -= sub_width, ++k) {
+        for (x = left + quarter_width, i = 0; i < subsample_width;
+        x += sub_width, ++i) {
+            for (y = top - quarter_width, k = 0; k < subsample_width;
+            y -= sub_width, ++k) {
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
         }
-        for (x = left + three_width, i = 0; i < 4; x += sub_width, ++i) {
-            for (y = top - three_width, k = 0; k < 4; y -= sub_width, ++k) {
+        for (x = left + three_width, i = 0; i < subsample_width;
+        x += sub_width, ++i) {
+            for (y = top - three_width, k = 0; k < subsample_width;
+            y -= sub_width, ++k) {
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
@@ -125,7 +140,7 @@ public:
         }
 
         bool any_live = false;
-        for (unsigned i = 0; i < 32; ++i) {
+        for (unsigned i = 0; i < subsamples; ++i) {
             _sub_iterates[i].iterate();
             if (!_sub_iterates[i].escaped() && !_sub_iterates[i].bounded()) {
                 any_live = true;
@@ -149,18 +164,18 @@ public:
 
     void computeColor(unsigned char & r, unsigned char & g, unsigned char & b)
     {
-        float r_avg = 0.0, g_avg = 0.0, b_avg = 0.0;
-        for (unsigned i = 0; i < 32; ++i) {
+        float r_sum = 0.0, g_sum = 0.0, b_sum = 0.0;
+        for (unsigned i = 0; i < subsamples; ++i) {
             float red, green, blue;
             colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].bounded(),
               _sub_iterates[i].getCount(), red, green, blue);
-            r_avg += red / 32.0;
-            g_avg += green / 32.0;
-            b_avg += blue / 32.0;
+            r_sum += red;
+            g_sum += green;
+            b_sum += blue;
         }
-        r = r_avg * 255.0;
-        g = g_avg * 255.0;
-        b = b_avg * 255.0;
+        r = r_sum * (255.0 / static_cast<double>(subsamples));
+        g = g_sum * (255.0 / static_cast<double>(subsamples));
+        b = b_sum * (255.0 / static_cast<double>(subsamples));
     }
 
     static ColorMapFunc colorMap;
@@ -177,15 +192,15 @@ private:
 void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
   float & b)
 {
-    if (!esc && !bound) {
-        r = 0.0; g = 0.0; b = 0.0;
+    if (!esc) {
+        r = 0.0; g = 0.271; b = 0.361;
         return;
     }
 
     const float r_start = 1.0, g_start = 0.4, b_start = 0.2;
     const float r_end = 0.0, g_end = 0.541, b_end = 0.722;
     
-    const unsigned range = 50;
+    const unsigned range = 100;
 
     if (fmod((iter / range), 2) < 1) {
         iter = fmod(iter, range);
@@ -199,33 +214,56 @@ void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
     g = (1.0 - alpha) * g_start + alpha * g_end;
     b = (1.0 - alpha) * b_start + alpha * b_end;
 
+    /*
     if (bound) {
         r /= 4.0;
         g /= 4.0;
         b /= 4.0;
     }
+    */
 }
 
-const int window_width = 960;
-const int window_height = 960;
+
+const int bin_width = 4;
+
+bool bin_finished[window_height / bin_width][window_width / bin_width];
 
 GLuint mandel_texture;
 unsigned char texture_data[window_width * window_height * 3];
 
 Pixel pixels[window_height][window_width];
 
-BlockingQueue<unsigned> line_queue;
+BlockingQueue<pair<unsigned, unsigned> > bin_queue;
 
-void doLine()
+void doBin()
 {
     try {
         while (true) {
-            unsigned y = line_queue.pop();
-            for (unsigned x = 0; x < window_width; ++x) {
-                pixels[y][x].iterate();
+            pair<unsigned, unsigned> p = bin_queue.pop();
+            bool all_finished = true;
+            unsigned y_start = p.second * bin_width;
+            unsigned x_start = p.first * bin_width;
+            for (unsigned y = y_start; y < y_start + bin_width; ++y) {
+                for (unsigned x = x_start; x < x_start + bin_width; ++x) {
+                    Pixel & px = pixels[y][x];
+                    px.iterate();
+                    unsigned char & r =
+                      texture_data[window_width*3*y + 3*x + 0];
+                    unsigned char & g =
+                      texture_data[window_width*3*y + 3*x + 1];
+                    unsigned char & b =
+                      texture_data[window_width*3*y + 3*x + 2];
+                    px.color(r, g, b);
+                    if (!px.isFinal()) {
+                        all_finished = false;
+                    }
+                }
+            }
+            if (all_finished) {
+                bin_finished[p.second][p.first] = true;
             }
         }
-    } catch (BlockingQueue<unsigned>::Shutdown & e) {
+    } catch (BlockingQueue<pair<unsigned, unsigned> >::Shutdown & e) {
     }
 }
 
@@ -235,12 +273,16 @@ void idleFunc()
     const unsigned thread_count = 20;
     boost::thread threads[thread_count];
 
-    for (unsigned y = 0; y < window_height; ++y) {
-        line_queue.push(y);
+    for (unsigned y = 0; y < window_height / bin_width; ++y) {
+        for (unsigned x = 0; x < window_width / bin_width; ++x) {
+            if (!bin_finished[y][x]) {
+                bin_queue.push(pair<unsigned, unsigned>(x, y));
+            }
+        }
     }
-    line_queue.shutdown();
+    bin_queue.shutdown();
     for (unsigned i = 0; i < thread_count; ++i) {
-        threads[i] = boost::thread(doLine);
+        threads[i] = boost::thread(doBin);
     }
 
     for (unsigned i = 0; i < thread_count; ++i) {
@@ -256,18 +298,6 @@ void idleFunc()
 
 void renderScene()
 {
-    for (unsigned y = 0; y < window_height; ++y) {
-        for (unsigned x = 0; x < window_width; ++x) {
-            unsigned char & r =
-              texture_data[window_width*3*y + 3*x + 0];
-            unsigned char & g =
-              texture_data[window_width*3*y + 3*x + 1];
-            unsigned char & b =
-              texture_data[window_width*3*y + 3*x + 2];
-            pixels[y][x].color(r, g, b);
-        }
-    }
-
     glBindTexture(GL_TEXTURE_2D, mandel_texture);
     glTexImage2D(GL_TEXTURE_2D, 0, 3, window_width, window_height, 0, GL_RGB,
                  GL_UNSIGNED_BYTE, texture_data);
@@ -284,12 +314,13 @@ void renderScene()
 }
 
 Pixel::ColorMapFunc Pixel::colorMap = colorMap1;
-static double real_center = -0.85, imag_center = 0.0, width = 2.8;
 
 void initialize(double real_center, double imag_center, double width)
 {
     cout << "real: " << real_center << " imag: " << imag_center
       << " width: " << width << endl;
+    starting_epsilon = log(1.0+log(1.0 + 1.0/width)) / window_width;
+
     double real_start = real_center - width / 2.0;
     double real, imag = imag_center + width / 2.0;
     double real_inc =
@@ -300,7 +331,10 @@ void initialize(double real_center, double imag_center, double width)
     unsigned x, y;
     for (y = 0; y < window_height; ++y, imag -= imag_inc) {
         for (real = real_start, x = 0; x < window_width; ++x,real += real_inc) {
-              new (&pixels[y][x]) Pixel(real, imag, real_inc);
+            if (y % bin_width == 0 && x % bin_width == 0) {
+                bin_finished[y/bin_width][x/bin_width] = false;
+            }
+            new (&pixels[y][x]) Pixel(real, imag, real_inc);
         }
     }
     iteration = 0;
