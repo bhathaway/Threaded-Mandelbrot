@@ -3,53 +3,82 @@
 
 #include <queue>
 #include <boost/thread/condition_variable.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
-template <typename T>
+// This class initializes to an active state, i.e. shutdown is false to start.
+template <typename T, unsigned item_limit>
 class BlockingQueue : private std::queue<T>
 {
 public: // Exceptions
-    struct Shutdown { };
+    struct Timeout { };
 
 public:
-    BlockingQueue() : std::queue<T>(), _shutdown(false) { }
+    BlockingQueue() : std::queue<T>() { }
 
     T pop()
     {
-        boost::mutex::scoped_lock lock(_transaction_mutex);
+        boost::unique_lock<boost::mutex> lock(_transaction_mutex);
 
-        if (std::queue<T>::empty() && !_shutdown) {
-            _wake_up_condition.wait(lock);
+        if (std::queue<T>::empty()) {
+            _item_can_pop.wait(lock);
         }
 
-        if (std::queue<T>::empty() && _shutdown) {
-            throw Shutdown();
-        } else if (!std::queue<T>::empty()) {
-            T ret(std::queue<T>::front());
-            std::queue<T>::pop();
+        T ret(std::queue<T>::front());
+        std::queue<T>::pop();
+        _item_can_push.notify_one();
 
-            return ret;
-        } else {
-            assert(false);
+        return ret;
+    }
+
+    // Can throw Timeout
+    T pop(const boost::posix_time::time_duration & timeout)
+    {
+        boost::unique_lock<boost::mutex> lock(_transaction_mutex);
+
+        if (std::queue<T>::empty()) {
+            if (!_item_can_pop.timed_wait(lock, timeout)) {
+                throw Timeout();
+            }
         }
+
+        T ret(std::queue<T>::front());
+        std::queue<T>::pop();
+        _item_can_push.notify_one();
+
+        return ret;
     }
 
-    void push(const T & x)
+    void push(const T & item)
     {
-        boost::mutex::scoped_lock lock(_transaction_mutex);
-        std::queue<T>::push(x);
-        _wake_up_condition.notify_one();
+        boost::unique_lock<boost::mutex> lock(_transaction_mutex);
+
+        if (std::queue<T>::size() >= item_limit) {
+            _item_can_push.wait(lock);
+        }
+
+        std::queue<T>::push(item);
+        _item_can_pop.notify_one();
     }
 
-    void shutdown()
+    // Can throw Timeout
+    void push(const T & item, const boost::posix_time::time_duration & timeout)
     {
-        boost::mutex::scoped_lock lock(_transaction_mutex);
-        _shutdown = true;
+        boost::unique_lock<boost::mutex> lock(_transaction_mutex);
+
+        if (std::queue<T>::size() >= item_limit) {
+            if (!_item_can_push.timed_wait(lock, timeout)) {
+                throw Timeout();
+            }
+        }
+        
+        std::queue<T>::push(item);
+        _item_can_pop.notify_one();
     }
 
 private:
-    bool _shutdown;
     mutable boost::mutex::mutex _transaction_mutex;
-    mutable boost::condition_variable _wake_up_condition;
+    mutable boost::condition_variable _item_can_push;
+    mutable boost::condition_variable _item_can_pop;
 };
 
 #endif

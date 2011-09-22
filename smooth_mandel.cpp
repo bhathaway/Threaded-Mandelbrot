@@ -233,54 +233,57 @@ unsigned char texture_data[window_width * window_height * 3];
 
 Pixel pixels[window_height][window_width];
 
-BlockingQueue<pair<unsigned, unsigned> > bin_queue;
+const unsigned num_bins =
+  (window_height / bin_width) * (window_width / bin_width);
+
+const unsigned thread_count = 2;
+BlockingQueue<pair<int, int>, num_bins + thread_count> bin_queue;
 
 void doBin()
 {
-    try {
-        while (true) {
-            pair<unsigned, unsigned> p = bin_queue.pop();
-            bool all_finished = true;
-            unsigned y_start = p.second * bin_width;
-            unsigned x_start = p.first * bin_width;
-            for (unsigned y = y_start; y < y_start + bin_width; ++y) {
-                for (unsigned x = x_start; x < x_start + bin_width; ++x) {
-                    Pixel & px = pixels[y][x];
-                    px.iterate();
-                    unsigned char & r =
-                      texture_data[window_width*3*y + 3*x + 0];
-                    unsigned char & g =
-                      texture_data[window_width*3*y + 3*x + 1];
-                    unsigned char & b =
-                      texture_data[window_width*3*y + 3*x + 2];
-                    px.color(r, g, b);
-                    if (!px.isFinal()) {
-                        all_finished = false;
-                    }
+    pair<int, int> p;
+    while ((p = bin_queue.pop()) != pair<int, int>(-1, -1)) {
+        bool all_finished = true;
+        unsigned y_start = p.second * bin_width;
+        unsigned x_start = p.first * bin_width;
+        for (unsigned y = y_start; y < y_start + bin_width; ++y) {
+            for (unsigned x = x_start; x < x_start + bin_width; ++x) {
+                Pixel & px = pixels[y][x];
+                px.iterate();
+                unsigned char & r =
+                  texture_data[window_width*3*y + 3*x + 0];
+                unsigned char & g =
+                  texture_data[window_width*3*y + 3*x + 1];
+                unsigned char & b =
+                  texture_data[window_width*3*y + 3*x + 2];
+                px.color(r, g, b);
+                if (!px.isFinal()) {
+                    all_finished = false;
                 }
             }
-            if (all_finished) {
-                bin_finished[p.second][p.first] = true;
-            }
         }
-    } catch (BlockingQueue<pair<unsigned, unsigned> >::Shutdown & e) {
+        if (all_finished) {
+            bin_finished[p.second][p.first] = true;
+        }
     }
 }
 
 unsigned iteration = 0;
 void idleFunc()
 {
-    const unsigned thread_count = 20;
     boost::thread threads[thread_count];
 
-    for (unsigned y = 0; y < window_height / bin_width; ++y) {
-        for (unsigned x = 0; x < window_width / bin_width; ++x) {
+    for (int y = 0; y < window_height / bin_width; ++y) {
+        for (int x = 0; x < window_width / bin_width; ++x) {
             if (!bin_finished[y][x]) {
                 bin_queue.push(pair<unsigned, unsigned>(x, y));
             }
         }
     }
-    bin_queue.shutdown();
+    for (unsigned i = 0; i < thread_count; ++i) {
+        bin_queue.push(pair<int, int>(-1, -1));
+    }
+
     for (unsigned i = 0; i < thread_count; ++i) {
         threads[i] = boost::thread(doBin);
     }
