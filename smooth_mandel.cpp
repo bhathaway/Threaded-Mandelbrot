@@ -11,6 +11,9 @@ static double real_center = -0.85, imag_center = 0.0, width = 2.8;
 const int window_width = 800;
 const int window_height = 800;
 
+int main_window, iterates_window;
+
+
 double starting_epsilon;
 
 class ComplexIterate
@@ -20,6 +23,11 @@ public:
 
 public:
     ComplexIterate()
+    { }
+
+    ComplexIterate(const ComplexIterate & c)
+    : _start(c._start), _value(c._value), _slow_value(c._slow_value),
+      _escaped(c._escaped), _bounded(c._bounded), _count(c._count)
     { }
 
     ComplexIterate(double r, double i)
@@ -91,6 +99,63 @@ private:
     unsigned _count;
     double _adjusted_count;
 };
+
+// Most iterates to see in the iterate window
+const size_t iterate_limit = 5000;
+size_t iterate_count = 0;
+ComplexIterate iterates[iterate_limit];
+double min_real, max_real, min_imag, max_imag;
+
+void calculateIterates(double x, double y)
+{
+    min_real = x;
+    max_real = x;
+    min_imag = y;
+    max_imag = y;
+
+    cout << "Calculating for (" << x << ", " << y << ")\n";
+    new (&iterates[0]) ComplexIterate(x, y);
+    bool escaped = false;
+    unsigned i;
+    for (i = 0; !escaped && i < iterate_limit - 1; ++i) {
+        double re, im;
+        re = iterates[i].getValue().real();
+        im = iterates[i].getValue().imag();
+
+        if (re < min_real) {
+            min_real = re;
+            if (min_real < -2.0) {
+                min_real = -2.0;
+            }
+        } else if (re > max_real) {
+            max_real = re;
+            if (max_real > 2.0) {
+                max_real = 2.0;
+            }
+        }
+
+        if (im < min_imag) {
+            min_imag = im;
+            if (min_imag < -2.0) {
+                min_imag = -2.0;
+            }
+        } else if (im > max_imag) {
+            max_imag = im;
+            if (max_imag > 2.0) {
+                max_imag = 2.0;
+            }
+        }
+        // Copy constructor leaves state as is.
+        new (&iterates[i+1]) ComplexIterate(iterates[i]);
+        iterates[i+1].iterate();
+        escaped = iterates[i+1].escaped();
+    }
+    iterate_count = i;
+    cout << "iterate_count: " << iterate_count << endl;
+    cout << "Bounding box: " << "(" << min_real << ", " << min_imag << ")-("
+      << max_real << ", " << max_imag << ")" << endl;
+    glutPostWindowRedisplay(iterates_window);
+}
 
 double ComplexIterate::escape_value = 10E100;
 
@@ -296,7 +361,39 @@ void idleFunc()
     if (iteration % 100 == 0) {
         cout << "iteration " << iteration << endl;
     }
-    glutPostRedisplay();
+    glutPostWindowRedisplay(main_window);
+}
+
+void renderIterates()
+{
+    double scale, x_offset, y_offset;
+    // Assuming square.. TODO: Use screen dimensions.
+    if (max_real - min_real > max_imag - min_imag) {
+        // ---
+        // ---
+        // Width dominates
+        scale = (max_real-min_real)/1.8;
+    } else {
+        // ||
+        // ||
+        // Height dominates
+        scale = (max_imag-min_imag)/1.8;
+    }
+    x_offset = (max_real+min_real) / 2.0;
+    y_offset = (max_imag+min_imag) / 2.0;
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glColor3f(1.0, 1.0, 1.0);
+    glBegin(GL_POINTS);
+        for (unsigned i = 0; i < iterate_count; ++i) {
+            double re = iterates[i].getValue().real();
+            double im = iterates[i].getValue().imag();
+            double gl_x = (re - x_offset) / scale;
+            double gl_y = (im - y_offset) / scale;
+            // Convert to gl coordinates based on bounding box
+            glVertex2f(gl_x, gl_y);
+        }
+    glEnd();
 }
 
 void renderScene()
@@ -347,12 +444,24 @@ void mouseHandler(int button, int state, int x, int y)
 {
     bool button_pressed = false;
     double factor;
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-        button_pressed = true;
-        factor = 0.666667;
-    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
-        button_pressed = true;
-        factor = 1.5;
+    if (glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
+        if (button == GLUT_LEFT_BUTTON) {
+            double screen_x = (double)(x - (window_width / 2)) /
+              ((double)window_width / 2.0);
+            double screen_y = (double)((window_height / 2) - y) /
+              ((double)window_height / 2.0);
+            double new_x = screen_x * (width / 2.0) + real_center;
+            double new_y = screen_y * (width / 2.0) + imag_center;
+            calculateIterates(new_x, new_y);
+        }
+    } else {
+        if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+            button_pressed = true;
+            factor = 0.666667;
+        } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+            button_pressed = true;
+            factor = 1.5;
+        }
     }
 
     if (button_pressed) {
@@ -380,7 +489,7 @@ int main(int argc, char * argv[])
     glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
     glutInitWindowPosition(100,100);
     glutInitWindowSize(window_width, window_height);
-    glutCreateWindow("Gradual Mandelbrot Rendering");
+    main_window = glutCreateWindow("Gradual Mandelbrot Rendering");
     
     initialize(real_center, imag_center, width);
 
@@ -389,6 +498,10 @@ int main(int argc, char * argv[])
     glutDisplayFunc(renderScene);
     glutIdleFunc(idleFunc);
     glutMouseFunc(mouseHandler);
+
+    // Create additional window for looking at iterates.
+    iterates_window = glutCreateWindow("Iterate View");
+    glutDisplayFunc(renderIterates);
 
     // enter GLUT event processing cycle
     glutMainLoop();
