@@ -101,7 +101,7 @@ private:
 };
 
 // Most iterates to see in the iterate window
-const size_t iterate_limit = 5000;
+const size_t iterate_limit = 50000;
 size_t iterate_count = 0;
 ComplexIterate iterates[iterate_limit];
 double min_real, max_real, min_imag, max_imag;
@@ -159,13 +159,13 @@ void calculateIterates(double x, double y)
 
 double ComplexIterate::escape_value = 10E100;
 
-const unsigned subsample_width = 2;
+const unsigned subsample_width = 3;
 const unsigned subsamples = 2*subsample_width*subsample_width;
 
 class Pixel
 {
 public:
-    typedef void (*ColorMapFunc)(bool, bool, double, float &, float &, float &);
+    typedef void (*ColorMapFunc)(const ComplexIterate &, float &, float &, float &);
 
 public:
     Pixel() { }
@@ -232,8 +232,7 @@ public:
         float r_sum = 0.0, g_sum = 0.0, b_sum = 0.0;
         for (unsigned i = 0; i < subsamples; ++i) {
             float red, green, blue;
-            colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].bounded(),
-              _sub_iterates[i].getCount(), red, green, blue);
+            colorMap(_sub_iterates[i], red, green, blue);
             r_sum += red;
             g_sum += green;
             b_sum += blue;
@@ -254,9 +253,12 @@ private:
 };
 
 
-void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
-  float & b)
+void colorMap1(const ComplexIterate & i, float & r, float & g, float & b)
 {
+    const bool esc = i.escaped();
+    const bool bound = i.bounded();
+    double iter = i.getCount();
+
     if (!esc) {
         r = 0.0; g = 0.271; b = 0.361;
         return;
@@ -286,6 +288,53 @@ void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
         b /= 4.0;
     }
     */
+}
+
+void colorMap2(const ComplexIterate & i, float & r, float & g, float & b)
+{
+    const bool esc = i.escaped();
+
+    if (!esc) {
+        r = 0.0; g = 0.0; b = 0.0;
+        return;
+    }
+
+    ComplexIterate::ValueType v = i.getValue();
+    const float r_start = 0.2, g_start = 0.9, b_start = 0.2;
+    const float r_end = 1.0, g_end = 0.2, b_end = 1.0;
+
+    // Crpytic, but arg gives the atan2 of the coordinates.
+    auto alpha = (arg(v) + M_PI) / (2*M_PI);
+
+    r = (1.0 - alpha) * r_start + alpha * r_end;
+    g = (1.0 - alpha) * g_start + alpha * g_end;
+    b = (1.0 - alpha) * b_start + alpha * b_end;
+}
+
+void colorMap3(const ComplexIterate & i, float & r, float & g, float & b)
+{
+    const bool esc = i.escaped();
+
+    if (!esc) {
+        r = 0.0; g = 0.0; b = 0.0;
+        return;
+    }
+
+    ComplexIterate::ValueType v = i.getValue();
+    const float r_start = 0.2, g_start = 0.9, b_start = 0.2;
+    const float r_end = 1.0, g_end = 0.2, b_end = 1.0;
+
+    // Crpytic, but arg gives the atan2 of the coordinates.
+    auto alpha = arg(v);
+    if (alpha < 0) {
+        r = r_start;
+        g = g_start;
+        b = b_start;
+    } else {
+        r = r_end;
+        g = g_end;
+        b = b_end;
+    }
 }
 
 
@@ -413,7 +462,7 @@ void renderScene()
     glFlush();
 }
 
-Pixel::ColorMapFunc Pixel::colorMap = colorMap1;
+Pixel::ColorMapFunc Pixel::colorMap = colorMap3;
 
 void initialize(double real_center, double imag_center, double width)
 {
