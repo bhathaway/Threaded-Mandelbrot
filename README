@@ -1,2 +1,6 @@
 This code depends on c++-0x, gcc, and the boost c++ library, preferably version
 1.42 and up.
+
+Keyboard controls:
+  - Press '0' to decrease banding & make Moire pattern busier;
+  - Press '9' to make Moire pattern less busy but possibly cause banding.
