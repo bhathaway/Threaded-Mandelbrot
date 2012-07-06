@@ -159,8 +159,8 @@ void calculateIterates(double x, double y)
 
 double ComplexIterate::escape_value = 10E100;
 
-const unsigned subsample_width = 3;
-const unsigned subsamples = 2*subsample_width*subsample_width;
+const unsigned subsample_width = 2;
+const unsigned subsamples = subsample_width*subsample_width;
 
 class Pixel
 {
@@ -175,19 +175,21 @@ public:
     {
         // Setup the sub-iterates.
         double sub_width = _width / static_cast<double>(subsample_width);
+        double half_width = sub_width / 2.0;
         double quarter_width = sub_width / 4.0;
         double three_width = sub_width / 2.0 + quarter_width;
         double x, y;
         unsigned i, k;
         unsigned iter = 0;
-        for (x = left + quarter_width, i = 0; i < subsample_width;
+        for (x = left + half_width, i = 0; i < subsample_width;
         x += sub_width, ++i) {
-            for (y = top - quarter_width, k = 0; k < subsample_width;
+            for (y = top - half_width, k = 0; k < subsample_width;
             y -= sub_width, ++k) {
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
         }
+        /*
         for (x = left + three_width, i = 0; i < subsample_width;
         x += sub_width, ++i) {
             for (y = top - three_width, k = 0; k < subsample_width;
@@ -195,7 +197,7 @@ public:
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
-        }
+        }*/
     }
 
     void iterate()
@@ -240,6 +242,12 @@ public:
         r = r_sum * (255.0 / static_cast<double>(subsamples));
         g = g_sum * (255.0 / static_cast<double>(subsamples));
         b = b_sum * (255.0 / static_cast<double>(subsamples));
+        
+        auto a = min(min(r, g), b);
+
+        r -= a;
+        g -= a;
+        b -= a;
     }
 
     static ColorMapFunc colorMap;
@@ -337,6 +345,46 @@ void colorMap3(const ComplexIterate & i, float & r, float & g, float & b)
     }
 }
 
+unsigned int max_c = 16;
+
+void colorMap4(const ComplexIterate & i, float & r, float & g, float & b)
+{
+    const bool esc = i.escaped();
+
+    if (!esc) {
+        r = 0.0; g = 0.0; b = 0.0;
+        return;
+    }
+
+    ComplexIterate::ValueType v = i.getValue();
+
+    static const float rs[6] = {1, 1, 0, 0, 0, 1};
+    static const float gs[6] = {0, 1, 1, 1, 0, 0};
+    static const float bs[6] = {0, 0, 0, 1, 1, 1};
+
+    auto t(arg(v));
+    unsigned int c(ceil(i.getCount()));
+
+    while (c < max_c) {
+        t *= 2;
+        if (t < -M_PI) t += 2*M_PI;
+        else if (t >= M_PI) t -= 2*M_PI;
+        ++c;
+    }
+
+    auto alpha = (t + M_PI)*3/M_PI;
+    auto beta = alpha - floor(alpha);
+
+    unsigned int k0(alpha);
+    unsigned int k1 = (k0 + 1)%6;
+
+    auto r0 = rs[k0], g0 = gs[k0], b0 = bs[k0];
+    auto r1 = rs[k1], g1 = gs[k1], b1 = bs[k1];
+
+    r = r0 + beta*(r1 - r0);
+    g = g0 + beta*(g1 - g0);
+    b = b0 + beta*(b1 - b0);
+}
 
 const int bin_width = 4;
 
@@ -462,7 +510,7 @@ void renderScene()
     glFlush();
 }
 
-Pixel::ColorMapFunc Pixel::colorMap = colorMap3;
+Pixel::ColorMapFunc Pixel::colorMap = colorMap4;
 
 void initialize(double real_center, double imag_center, double width)
 {
@@ -506,10 +554,12 @@ void mouseHandler(int button, int state, int x, int y)
     } else {
         if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
             button_pressed = true;
-            factor = 0.666667;
+            factor = 0.5;
+            ++max_c;
         } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
             button_pressed = true;
-            factor = 1.5;
+            factor = 2.0;
+            --max_c;
         }
     }
 
@@ -531,6 +581,21 @@ void mouseHandler(int button, int state, int x, int y)
     }
 }
 
+void keyHandler(unsigned char key, int x, int y) {
+    bool redraw = false;
+    if (key == '9') {
+        --max_c;
+        redraw = true;
+    } else if (key == '0') {
+        ++max_c;
+        redraw = true;
+    }
+
+    if (redraw) {
+        initialize(real_center, imag_center, width);
+    }
+}
+
 int main(int argc, char * argv[])
 {
     // init GLUT and create Window
@@ -547,6 +612,7 @@ int main(int argc, char * argv[])
     glutDisplayFunc(renderScene);
     glutIdleFunc(idleFunc);
     glutMouseFunc(mouseHandler);
+    glutKeyboardFunc(keyHandler);
 
     // Create additional window for looking at iterates.
     iterates_window = glutCreateWindow("Iterate View");

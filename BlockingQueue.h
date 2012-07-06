@@ -76,7 +76,7 @@ public:
     }
 
 private:
-    mutable boost::mutex::mutex _transaction_mutex;
+    mutable boost::mutex _transaction_mutex;
     mutable boost::condition_variable _item_can_push;
     mutable boost::condition_variable _item_can_pop;
 };
