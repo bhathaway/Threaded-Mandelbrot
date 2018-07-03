@@ -159,7 +159,7 @@ void calculateIterates(double x, double y)
 
 double ComplexIterate::escape_value = 10E100;
 
-const unsigned subsample_width = 2;
+const unsigned subsample_width = 3;
 const unsigned subsamples = 2*subsample_width*subsample_width;
 
 class Pixel
@@ -230,6 +230,7 @@ public:
     void computeColor(unsigned char & r, unsigned char & g, unsigned char & b)
     {
         float r_sum = 0.0, g_sum = 0.0, b_sum = 0.0;
+        float reds[subsamples], greens[subsamples], blues[subsamples];
         for (unsigned i = 0; i < subsamples; ++i) {
             float red, green, blue;
             colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].bounded(),
@@ -237,10 +238,29 @@ public:
             r_sum += red;
             g_sum += green;
             b_sum += blue;
+            reds[i] = red;
+            greens[i] = green;
+            blues[i] = blue;
         }
-        r = r_sum * (255.0 / static_cast<double>(subsamples));
-        g = g_sum * (255.0 / static_cast<double>(subsamples));
-        b = b_sum * (255.0 / static_cast<double>(subsamples));
+        float r_mean = r_sum/subsamples,
+              g_mean = g_sum/subsamples,
+              b_mean = b_sum/subsamples;
+
+        float r_sum2 = 0.0, g_sum2 = 0.0, b_sum2 = 0.0;
+
+        for (unsigned i = 0; i < subsamples; ++i) {
+            r_sum2 += (reds[i]   - r_mean) * (reds[i]   - r_mean);
+            g_sum2 += (greens[i] - g_mean) * (greens[i] - g_mean);
+            b_sum2 += (blues[i]  - b_mean) * (blues[i]  - b_mean);
+        }
+
+        float r_var = r_sum2 / (subsamples - 1),
+              g_var = g_sum2 / (subsamples - 1),
+              b_var = b_sum2 / (subsamples - 1);
+
+        r = (r_var * 0.5 + (1.0-r_var)*r_mean) * 255.0;
+        g = (g_var * 0.5 + (1.0-g_var)*g_mean) * 255.0;
+        b = (b_var * 0.5 + (1.0-b_var)*b_mean) * 255.0;
     }
 
     static ColorMapFunc colorMap;
