@@ -1,7 +1,7 @@
 #include <GL/glut.h>
 #include <complex>
 #include <iostream>
-#include <boost/thread.hpp>
+#include <thread>
 #include "BlockingQueue.h"
 #include <cmath>
 
@@ -301,13 +301,12 @@ Pixel pixels[window_height][window_width];
 const unsigned num_bins =
   (window_height / bin_width) * (window_width / bin_width);
 
-const unsigned thread_count = 2;
+const unsigned thread_count = 8;
 BlockingQueue<pair<int, int>, num_bins + thread_count> bin_queue;
 
 void doBin()
 {
-    pair<int, int> p;
-    while ((p = bin_queue.pop()) != pair<int, int>(-1, -1)) {
+    for (pair<int, int> p = *bin_queue.pop(); p != pair<int, int>(-1, -1); p = *bin_queue.pop()) {
         bool all_finished = true;
         unsigned y_start = p.second * bin_width;
         unsigned x_start = p.first * bin_width;
@@ -336,7 +335,7 @@ void doBin()
 unsigned iteration = 0;
 void idleFunc()
 {
-    boost::thread threads[thread_count];
+    thread threads[thread_count];
 
     for (int y = 0; y < window_height / bin_width; ++y) {
         for (int x = 0; x < window_width / bin_width; ++x) {
@@ -350,7 +349,7 @@ void idleFunc()
     }
 
     for (unsigned i = 0; i < thread_count; ++i) {
-        threads[i] = boost::thread(doBin);
+        threads[i] = thread(doBin);
     }
 
     for (unsigned i = 0; i < thread_count; ++i) {
