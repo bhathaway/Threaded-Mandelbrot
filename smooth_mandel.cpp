@@ -1,9 +1,12 @@
+#include "blocking_shared_queue.h"
+
 #include <GL/glut.h>
+
 #include <complex>
 #include <iostream>
 #include <thread>
-#include "BlockingQueue.h"
 #include <cmath>
+#include <vector>
 
 using namespace std;
 
@@ -302,11 +305,14 @@ const unsigned num_bins =
   (window_height / bin_width) * (window_width / bin_width);
 
 const unsigned thread_count = 8;
-BlockingQueue<pair<int, int>, num_bins + thread_count> bin_queue;
+using Queue = BlockingSharedQueue<pair<int, int>, num_bins + thread_count>;
+vector<string> queue_subs {"worker pool"};
+Queue* bin_queue;
 
-void doBin()
+void doBin(Queue::SubscriberIndex sub)
 {
-    for (pair<int, int> p = *bin_queue.pop(); p != pair<int, int>(-1, -1); p = *bin_queue.pop()) {
+    for (auto item = bin_queue->Pop(sub); item; item = bin_queue->Pop(sub)) {
+        auto& p = item.get();
         bool all_finished = true;
         unsigned y_start = p.second * bin_width;
         unsigned x_start = p.first * bin_width;
@@ -335,26 +341,33 @@ void doBin()
 unsigned iteration = 0;
 void idleFunc()
 {
+    bin_queue = new Queue(queue_subs.begin(), queue_subs.end());
     thread threads[thread_count];
 
+    // Set up all the work in advance.
     for (int y = 0; y < window_height / bin_width; ++y) {
         for (int x = 0; x < window_width / bin_width; ++x) {
             if (!bin_finished[y][x]) {
-                bin_queue.push(pair<unsigned, unsigned>(x, y));
+                bin_queue->Push(pair<unsigned, unsigned>(x, y));
             }
         }
     }
+
+    Queue::SubscriberIndex sub = 0; // One subcriber, sharing all work.
     for (unsigned i = 0; i < thread_count; ++i) {
-        bin_queue.push(pair<int, int>(-1, -1));
+        threads[i] = thread(doBin, sub);
     }
 
-    for (unsigned i = 0; i < thread_count; ++i) {
-        threads[i] = thread(doBin);
-    }
+    chrono::milliseconds time_limit_ms(3000);
+    // Awesome. Because of the new queue design, I can do this and
+    // it will kindly wait until everyone finishes.
+    bin_queue->Close(time_limit_ms);
 
     for (unsigned i = 0; i < thread_count; ++i) {
         threads[i].join();
     }
+
+    delete bin_queue;
 
     ++iteration;
     if (iteration % 100 == 0) {
