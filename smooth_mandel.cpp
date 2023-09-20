@@ -94,8 +94,8 @@ private:
     ValueType _start;
     ValueType _value;
     ValueType _slow_value;
-    bool _bounded;
     bool _escaped;
+    bool _bounded;
     unsigned _count;
     double _adjusted_count;
 };
@@ -165,13 +165,13 @@ const unsigned subsamples = 2*subsample_width*subsample_width;
 class Pixel
 {
 public:
-    typedef void (*ColorMapFunc)(bool, bool, double, float &, float &, float &);
+    typedef void (*ColorMapFunc)(bool, double, float &, float &, float &);
 
 public:
     Pixel() { }
 
     Pixel(double left, double top, double width)
-    : _left(left), _top(top), _width(width), _final(false)
+    : _final(false), _left(left), _top(top), _width(width)
     {
         // Setup the sub-iterates.
         double sub_width = _width / static_cast<double>(subsample_width);
@@ -232,8 +232,7 @@ public:
         float r_sum = 0.0, g_sum = 0.0, b_sum = 0.0;
         for (unsigned i = 0; i < subsamples; ++i) {
             float red, green, blue;
-            colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].bounded(),
-              _sub_iterates[i].getCount(), red, green, blue);
+            colorMap(_sub_iterates[i].escaped(), _sub_iterates[i].getCount(), red, green, blue);
             r_sum += red;
             g_sum += green;
             b_sum += blue;
@@ -254,8 +253,7 @@ private:
 };
 
 
-void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
-  float & b)
+void colorMap1(bool esc, double iter, float & r, float & g, float & b)
 {
     if (!esc) {
         r = 0.0; g = 0.271; b = 0.361;
@@ -278,14 +276,6 @@ void colorMap1(bool esc, bool bound, double iter, float & r, float & g,
     r = (1.0 - alpha) * r_start + alpha * r_end;
     g = (1.0 - alpha) * g_start + alpha * g_end;
     b = (1.0 - alpha) * b_start + alpha * b_end;
-
-    /*
-    if (bound) {
-        r /= 4.0;
-        g /= 4.0;
-        b /= 4.0;
-    }
-    */
 }
 
 
