@@ -7,14 +7,17 @@
 
 using namespace std;
 
-static double real_center = -0.85, imag_center = 0.0, width = 2.8;
-const int window_width = 800;
-const int window_height = 800;
+namespace {
+double real_center = -0.85;
+double imag_center = 0.0;
+double width = 2.8;
+constexpr GLsizei window_width = 800;
+constexpr GLsizei window_height = 800;
 
-int main_window, iterates_window;
-
-
-double starting_epsilon;
+using GlutWindow = int;
+GlutWindow main_window;
+GlutWindow iterates_window;
+}
 
 class ComplexIterate
 {
@@ -47,7 +50,6 @@ public:
                   log(log(abs_sqr) / log(escape_value))/log(2.0);
             } else {
                 const double epsilon = 0.00000000000001;
-                //double epsilon = starting_epsilon / (_count + 1);
                 const double real_diff = _value.real() - _slow_value.real();
                 if (real_diff < epsilon && real_diff > -epsilon) {
                     const double imag_diff = _value.imag() - _slow_value.imag();
@@ -100,11 +102,16 @@ private:
     double _adjusted_count;
 };
 
+namespace {
 // Most iterates to see in the iterate window
-const size_t iterate_limit = 5000;
-size_t iterate_count = 0;
+constexpr std::size_t iterate_limit = 5000;
+std::size_t iterate_count = 0;
 ComplexIterate iterates[iterate_limit];
-double min_real, max_real, min_imag, max_imag;
+double min_real;
+double max_real;
+double min_imag;
+double max_imag;
+}
 
 void calculateIterates(double x, double y)
 {
@@ -157,10 +164,12 @@ void calculateIterates(double x, double y)
     glutPostWindowRedisplay(iterates_window);
 }
 
-double ComplexIterate::escape_value = 10E100;
+double ComplexIterate::escape_value = 10e100;
 
-const unsigned subsample_width = 2;
-const unsigned subsamples = 2*subsample_width*subsample_width;
+namespace {
+constexpr unsigned subsample_width = 2;
+constexpr unsigned subsamples = 2 * subsample_width * subsample_width;
+}
 
 class Pixel
 {
@@ -278,8 +287,8 @@ void colorMap1(bool esc, double iter, float & r, float & g, float & b)
     b = (1.0 - alpha) * b_start + alpha * b_end;
 }
 
-
-const int bin_width = 4;
+namespace {
+constexpr unsigned bin_width = 4;
 
 bool bin_finished[window_height / bin_width][window_width / bin_width];
 
@@ -293,6 +302,9 @@ const unsigned num_bins =
 
 const unsigned thread_count = 8;
 BlockingQueue<pair<int, int>, num_bins + thread_count> bin_queue;
+
+unsigned iteration = 0;
+}
 
 void doBin()
 {
@@ -322,13 +334,12 @@ void doBin()
     }
 }
 
-unsigned iteration = 0;
 void idleFunc()
 {
     thread threads[thread_count];
 
-    for (int y = 0; y < window_height / bin_width; ++y) {
-        for (int x = 0; x < window_width / bin_width; ++x) {
+    for (unsigned y = 0; y < window_height / bin_width; ++y) {
+        for (unsigned x = 0; x < window_width / bin_width; ++x) {
             if (!bin_finished[y][x]) {
                 bin_queue.push(pair<unsigned, unsigned>(x, y));
             }
@@ -408,7 +419,6 @@ void initialize(double real_center, double imag_center, double width)
 {
     cout << "real: " << real_center << " imag: " << imag_center
       << " width: " << width << endl;
-    starting_epsilon = log(1.0+log(1.0 + 1.0/width)) / window_width;
 
     double real_start = real_center - width / 2.0;
     double real, imag = imag_center + width / 2.0;
@@ -495,4 +505,3 @@ int main(int argc, char * argv[])
     // enter GLUT event processing cycle
     glutMainLoop();
 }
-

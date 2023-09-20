@@ -1,6 +1,6 @@
 PLAT=$(shell uname)
 CXX_FLAGS=-std=c++14 -O2 -Wall -Wextra -Werror -pedantic
-smooth_mandel:
+smooth_mandel: smooth_mandel.cpp
 ifeq ($(PLAT),Darwin)
 	g++ $(CXX_FLAGS) -o smooth_mandel smooth_mandel.cpp -pthread -L/System/Library/Frameworks \
 	-framework GLUT -framework OpenGL
