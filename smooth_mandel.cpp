@@ -98,17 +98,29 @@ private:
 
 namespace {
 // Most iterates to see in the iterate window
-constexpr std::size_t iterate_limit = 5000;
-std::size_t iterate_count = 0;
-ComplexIterate iterates[iterate_limit];
-double min_real;
-double max_real;
-double min_imag;
-double max_imag;
+struct IterateWindowData {
+    static constexpr std::size_t iterate_limit = 5000;
+    std::size_t iterate_count = 0;
+    double min_real;
+    double max_real;
+    double min_imag;
+    double max_imag;
+} iterate_window_data;
+
+ComplexIterate iterates[IterateWindowData::iterate_limit];
 }
 
-void calculateIterates(double x, double y)
+// `iterates` must be allocated, but this function will use placement new on
+// its elemenst.
+IterateWindowData calculateIterates(ComplexIterate iterates[], double x, double y)
 {
+    IterateWindowData result;
+    double& min_real = result.min_real;
+    double& max_real = result.max_real;
+    double& min_imag = result.min_imag;
+    double& max_imag = result.max_imag;
+    std::size_t& iterate_count = result.iterate_count;
+
     min_real = x;
     max_real = x;
     min_imag = y;
@@ -118,7 +130,7 @@ void calculateIterates(double x, double y)
     new (&iterates[0]) ComplexIterate(x, y);
     bool escaped = false;
     unsigned i;
-    for (i = 0; !escaped && i < iterate_limit - 1; ++i) {
+    for (i = 0; !escaped && i < result.iterate_limit - 1; ++i) {
         double re, im;
         re = iterates[i].getValue().real();
         im = iterates[i].getValue().imag();
@@ -155,7 +167,8 @@ void calculateIterates(double x, double y)
     cout << "iterate_count: " << iterate_count << endl;
     cout << "Bounding box: " << "(" << min_real << ", " << min_imag << ")-("
       << max_real << ", " << max_imag << ")" << endl;
-    glutPostWindowRedisplay(iterates_window);
+
+    return result;
 }
 
 double ComplexIterate::escape_value = 10e100;
@@ -356,7 +369,14 @@ void idleFunc()
 
 void renderIterates()
 {
+    const double max_real = iterate_window_data.max_real;
+    const double min_real = iterate_window_data.min_real;
+    const double max_imag = iterate_window_data.max_imag;
+    const double min_imag = iterate_window_data.min_imag;
+    const std::size_t iterate_count = iterate_window_data.iterate_count;
+
     double scale, x_offset, y_offset;
+
     // Assuming square.. TODO: Use screen dimensions.
     if (max_real - min_real > max_imag - min_imag) {
         // ---
@@ -442,7 +462,8 @@ void mouseHandler(int button, int state, int x, int y)
               ((double)window_height / 2.0);
             double new_x = screen_x * (width / 2.0) + real_center;
             double new_y = screen_y * (width / 2.0) + imag_center;
-            calculateIterates(new_x, new_y);
+            iterate_window_data = calculateIterates(iterates, new_x, new_y);
+            glutPostWindowRedisplay(iterates_window);
         }
     } else {
         if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
