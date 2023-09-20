@@ -25,17 +25,11 @@ public:
     typedef complex<double> ValueType;
 
 public:
-    ComplexIterate()
-    { }
-
-    ComplexIterate(const ComplexIterate & c)
-    : _start(c._start), _value(c._value), _slow_value(c._slow_value),
-      _escaped(c._escaped), _bounded(c._bounded), _count(c._count)
-    { }
+    ComplexIterate() = default;
+    ComplexIterate(const ComplexIterate & c) = default;
 
     ComplexIterate(double r, double i)
-    : _start(r, i), _value(_start), _slow_value(_start), _escaped(false),
-      _bounded(false), _count(0)
+    : _start(r, i), _value(_start), _slow_value(_start)
     { }
     
     void iterate()
@@ -96,9 +90,9 @@ private:
     ValueType _start;
     ValueType _value;
     ValueType _slow_value;
-    bool _escaped;
-    bool _bounded;
-    unsigned _count;
+    bool _escaped = false;
+    bool _bounded = false;
+    unsigned _count = 0;
     double _adjusted_count;
 };
 
@@ -189,18 +183,14 @@ public:
         double x, y;
         unsigned i, k;
         unsigned iter = 0;
-        for (x = left + quarter_width, i = 0; i < subsample_width;
-        x += sub_width, ++i) {
-            for (y = top - quarter_width, k = 0; k < subsample_width;
-            y -= sub_width, ++k) {
+        for (x = left + quarter_width, i = 0; i < subsample_width; x += sub_width, ++i) {
+            for (y = top - quarter_width, k = 0; k < subsample_width; y -= sub_width, ++k) {
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
         }
-        for (x = left + three_width, i = 0; i < subsample_width;
-        x += sub_width, ++i) {
-            for (y = top - three_width, k = 0; k < subsample_width;
-            y -= sub_width, ++k) {
+        for (x = left + three_width, i = 0; i < subsample_width; x += sub_width, ++i) {
+            for (y = top - three_width, k = 0; k < subsample_width; y -= sub_width, ++k) {
                 new (&_sub_iterates[iter]) ComplexIterate(x, y);
                 ++iter;
             }
@@ -445,6 +435,7 @@ void mouseHandler(int button, int state, int x, int y)
     double factor;
     if (glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
         if (button == GLUT_LEFT_BUTTON) {
+            // TODO: Factor common code below.
             double screen_x = (double)(x - (window_width / 2)) /
               ((double)window_width / 2.0);
             double screen_y = (double)((window_height / 2) - y) /
