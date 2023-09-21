@@ -106,10 +106,9 @@ unsigned char texture_data[window_width * window_height * 3];
 
 Pixel pixels[window_height][window_width];
 
-const unsigned num_bins =
-  (window_height / bin_width) * (window_width / bin_width);
+constexpr unsigned num_bins = (window_height / bin_width) * (window_width / bin_width);
 
-const unsigned thread_count = 8;
+constexpr unsigned thread_count = 8;
 BlockingQueue<pair<int, int>, num_bins + thread_count> bin_queue;
 
 unsigned iteration = 0;
