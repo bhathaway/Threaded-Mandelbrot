@@ -41,7 +41,7 @@ private: // Helper methods
   void initialize(double real_center, double imag_center, double width);
   void calculate_iterates(double x, double y);
   void get_real_coord_from_screen(double& real_x, double& real_y, double x, double y);
-  void doBin();
+  void process_next_bin();
 
 private:
   MandelbrotView view_;

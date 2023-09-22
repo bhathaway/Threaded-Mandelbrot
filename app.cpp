@@ -5,10 +5,10 @@
 MandelbrotApp::MandelbrotApp()
   : view_(*this)
 {
-  initialize(real_center_, imag_center_, real_width_);
+  this->initialize(real_center_, imag_center_, real_width_);
 }
 
-void MandelbrotApp::doBin()
+void MandelbrotApp::process_next_bin()
 {
   for (std::pair<int, int> p = *bin_queue_.pop();
        p != std::pair<int, int>(-1, -1);
@@ -55,7 +55,7 @@ void MandelbrotApp::main_loop()
   }
 
   for (unsigned i = 0; i < thread_count; ++i) {
-    threads[i] = std::thread(&MandelbrotApp::doBin, this);
+    threads[i] = std::thread(&MandelbrotApp::process_next_bin, this);
   }
 
   for (unsigned i = 0; i < thread_count; ++i) {
@@ -68,9 +68,8 @@ void MandelbrotApp::update_iterates(int x, int y)
   double new_x;
   double new_y;
 
-  get_real_coord_from_screen(new_x, new_y, x, y);
-
-  calculate_iterates(new_x, new_y);
+  this->get_real_coord_from_screen(new_x, new_y, x, y);
+  this->calculate_iterates(new_x, new_y);
 }
 
 void MandelbrotApp::zoom(int x, int y, double factor)
@@ -78,10 +77,10 @@ void MandelbrotApp::zoom(int x, int y, double factor)
   double new_x;
   double new_y;
 
-  get_real_coord_from_screen(new_x, new_y, x, y);
+  this->get_real_coord_from_screen(new_x, new_y, x, y);
 
   double new_width = real_width_ * factor;
-  initialize(new_x, new_y, new_width);
+  this->initialize(new_x, new_y, new_width);
   real_center_ = new_x;
   imag_center_ = new_y;
   real_width_ = new_width;
