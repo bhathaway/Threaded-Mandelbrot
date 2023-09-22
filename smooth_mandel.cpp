@@ -52,17 +52,16 @@ void render_iterates() {
 
 int main(int argc, char* argv[])
 {
-  app = std::make_unique<MandelbrotApp>();
 
   // init GLUT and create Window
   glutInit(&argc, argv);
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
-  glutInitWindowPosition(100,100);
+  glutInitWindowPosition(100, 100);
+
+  app = std::make_unique<MandelbrotApp>();
   glutInitWindowSize(app->model().window_width, app->model().window_height);
   main_window = glutCreateWindow("Gradual Mandelbrot Rendering");
   
-  glEnable(GL_TEXTURE_2D);
-  glGenTextures(1, app->texture_handle());
   glutDisplayFunc(render_scene);
   glutIdleFunc(idleFunc);
   glutMouseFunc(mouseHandler);

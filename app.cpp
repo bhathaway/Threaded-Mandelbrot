@@ -91,8 +91,8 @@ void MandelbrotApp::zoom(int x, int y, double factor)
 
 void MandelbrotApp::get_real_coord_from_screen(double& real_x, double& real_y, double x, double y)
 {
-  constexpr double window_width = model_.window_width;
-  constexpr double window_height = model_.window_height;
+  constexpr double window_width = MandelbrotApp::Model::window_width;
+  constexpr double window_height = MandelbrotApp::Model::window_height;
 
   double screen_x = (double)(x - (window_width / 2)) / ((double)window_width / 2.0);
   double screen_y = (double)((window_height / 2) - y) / ((double)window_height / 2.0);
@@ -106,7 +106,7 @@ void MandelbrotApp::calculate_iterates(double x, double y)
   double& min_real = model_.iterate_window_data.min_real;
   double& max_imag = model_.iterate_window_data.max_imag;
   double& min_imag = model_.iterate_window_data.min_imag;
-  constexpr std::size_t iterate_limit = model_.iterate_window_data.iterate_limit;
+  constexpr std::size_t iterate_limit = MandelbrotApp::IterateWindowData::iterate_limit;
 
   std::cout << "Calculating for (" << x << ", " << y << ")\n";
   new (&model_.iterates[0]) ComplexIterate(x, y);

@@ -67,6 +67,8 @@ private:
   bool _final = false;
   // Subsampling for smoothness.
   ComplexIterate _sub_iterates[32];
-  double _left, _top, _width;
-  unsigned char _red, _green, _blue;
+  double _width;
+  unsigned char _red;
+  unsigned char _green;
+  unsigned char _blue;
 };

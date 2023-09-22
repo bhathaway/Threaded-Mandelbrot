@@ -1,11 +1,15 @@
 #include "view.h"
 #include "app.h"
 
-// Free variables from ::render_iterates
-// iterate_window_data, iterates
-// from ::render_scene
-// mandel_texture_, texture_data, window_height, window_width,
-//
+#include <GL/gl.h>
+
+MandelbrotView::MandelbrotView(const MandelbrotApp& parent)
+  : parent_(parent)
+{
+  glEnable(GL_TEXTURE_2D);
+  glGenTextures(1, &mandel_texture);
+}
+
 void MandelbrotView::render_iterates()
 {
   const MandelbrotApp::IterateWindowData& iterate_window_data =
@@ -53,7 +57,7 @@ void MandelbrotView::render_iterates()
 
 void MandelbrotView::render_scene()
 {
-  glBindTexture(GL_TEXTURE_2D, parent_.model().mandel_texture);
+  glBindTexture(GL_TEXTURE_2D, mandel_texture);
   constexpr GLint level = 0;
   constexpr GLint border = 0;
   glTexImage2D(GL_TEXTURE_2D, level, GL_RGB8,

@@ -59,7 +59,7 @@ void ComplexIterate::iterate()
 }
 
 Pixel::Pixel(double left, double top, double width)
-: _left(left), _top(top), _width(width)
+: _width(width)
 {
   // Setup the sub-iterates.
   const double sub_width = _width / static_cast<double>(subsample_width);

@@ -1,7 +1,6 @@
 #pragma once
 #include "view.h"
 #include "mandelbrot.h"
-#include <GL/gl.h>
 #include "BlockingQueue.h"
 
 // Given the size of object instances, I recommend heap allocation
@@ -19,12 +18,11 @@ public:
   };
 
   struct Model {
-    static constexpr GLsizei window_width = 800;
-    static constexpr GLsizei window_height = 800;
+    static constexpr std::uint32_t window_width = 800;
+    static constexpr std::uint32_t window_height = 800;
     IterateWindowData iterate_window_data;
     ComplexIterate iterates[IterateWindowData::iterate_limit];
     static constexpr std::size_t color_channels = 3;
-    GLuint mandel_texture;
     std::uint8_t texture_data[window_width * window_height * color_channels];
   };
 
@@ -36,8 +34,6 @@ public: // ***INTERFACE***
   void zoom(int x, int y, double factor);
 
   const Model& model() const { return model_; }
-  // TODO: Find a way to move this to the view, along with the texture handle.
-  GLuint* texture_handle() { return &model_.mandel_texture; }
   MandelbrotView& view() { return view_; }
 
 private: // Helper methods
