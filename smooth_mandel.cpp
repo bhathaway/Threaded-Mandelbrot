@@ -2,8 +2,6 @@
 #include <GL/glut.h>
 #include "app.h"
 
-using namespace std;
-
 namespace {
 using GlutWindow = int;
 GlutWindow main_window;
@@ -58,10 +56,11 @@ int main(int argc, char* argv[])
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
   glutInitWindowPosition(100, 100);
 
-  app = std::make_unique<MandelbrotApp>();
-  glutInitWindowSize(app->model().window_width, app->model().window_height);
+  glutInitWindowSize(MandelbrotApp::Model::window_width,
+                     MandelbrotApp::Model::window_height);
   main_window = glutCreateWindow("Gradual Mandelbrot Rendering");
   
+  app = std::make_unique<MandelbrotApp>();
   glutDisplayFunc(render_scene);
   glutIdleFunc(idleFunc);
   glutMouseFunc(mouseHandler);

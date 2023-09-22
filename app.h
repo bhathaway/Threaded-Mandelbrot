@@ -61,8 +61,8 @@ private:
   static constexpr unsigned num_bins =
     (Model::window_height / bin_width) * (Model::window_width / bin_width);
 
-  static constexpr unsigned thread_count = 8;
-  BlockingQueue<std::pair<int, int>, num_bins + thread_count> bin_queue;
+  static constexpr unsigned max_thread_count = 128;
+  BlockingQueue<std::pair<int, int>, num_bins + max_thread_count> bin_queue;
 
   unsigned iteration = 0;
 };

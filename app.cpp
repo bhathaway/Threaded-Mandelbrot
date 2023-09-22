@@ -2,8 +2,6 @@
 
 #include <iostream>
 
-using namespace std;
-
 MandelbrotApp::MandelbrotApp()
   : view_(*this)
 {
@@ -12,7 +10,10 @@ MandelbrotApp::MandelbrotApp()
 
 void MandelbrotApp::doBin()
 {
-  for (pair<int, int> p = *bin_queue.pop(); p != pair<int, int>(-1, -1); p = *bin_queue.pop()) {
+  for (std::pair<int, int> p = *bin_queue.pop();
+       p != std::pair<int, int>(-1, -1);
+       p = *bin_queue.pop())
+  {
     bool all_finished = true;
     unsigned y_start = p.second * bin_width;
     unsigned x_start = p.first * bin_width;
@@ -37,22 +38,24 @@ void MandelbrotApp::doBin()
 
 void MandelbrotApp::main_loop()
 {
+  const unsigned thread_count =
+      std::min(std::thread::hardware_concurrency(), max_thread_count);
   // TODO: Use a thread pool. This is needlessly expensive.
-  thread threads[thread_count];
+  std::vector<std::thread> threads(thread_count);
 
   for (unsigned y = 0; y < model_.window_height / bin_width; ++y) {
     for (unsigned x = 0; x < model_.window_width / bin_width; ++x) {
       if (!bin_finished[y][x]) {
-        bin_queue.push(pair<unsigned, unsigned>(x, y));
+        bin_queue.push(std::pair<unsigned, unsigned>(x, y));
       }
     }
   }
   for (unsigned i = 0; i < thread_count; ++i) {
-    bin_queue.push(pair<int, int>(-1, -1));
+    bin_queue.push(std::pair<int, int>(-1, -1));
   }
 
   for (unsigned i = 0; i < thread_count; ++i) {
-    threads[i] = thread(&MandelbrotApp::doBin, this);
+    threads[i] = std::thread(&MandelbrotApp::doBin, this);
   }
 
   for (unsigned i = 0; i < thread_count; ++i) {
@@ -61,7 +64,7 @@ void MandelbrotApp::main_loop()
 
   ++iteration;
   if (iteration % 100 == 0) {
-    cout << "iteration " << iteration << endl;
+    std::cout << "iteration " << iteration << std::endl;
   }
 }
 
@@ -145,14 +148,15 @@ void MandelbrotApp::calculate_iterates(double x, double y)
       escaped = model_.iterates[i + 1].escaped();
   }
   model_.iterate_window_data.iterate_count = i;
-  cout << "iterate_count: " << i << endl;
-  cout << "Bounding box: " << "(" << min_real << ", " << min_imag << ")-("
-    << max_real << ", " << max_imag << ")" << endl;
+  std::cout << "iterate_count: " << i << std::endl;
+  std::cout << "Bounding box: " << "(" << min_real << ", " << min_imag << ")-("
+    << max_real << ", " << max_imag << ")" << std::endl;
 }
 
 void MandelbrotApp::initialize(double real_center, double imag_center, double width)
 {
-  cout << "real: " << real_center << " imag: " << imag_center << " width: " << width << endl;
+  std::cout << "real: " << real_center << " imag: "
+            << imag_center << " width: " << width << std::endl;
 
   double real_start = real_center - width / 2.0;
   double real;
