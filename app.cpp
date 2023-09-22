@@ -7,7 +7,7 @@ using namespace std;
 MandelbrotApp::MandelbrotApp()
   : view_(*this)
 {
-	initialize(real_center, imag_center, real_width);
+  initialize(real_center, imag_center, real_width);
 }
 
 void MandelbrotApp::doBin()
@@ -82,7 +82,7 @@ void MandelbrotApp::zoom(int x, int y, double factor)
 
   get_real_coord_from_screen(new_x, new_y, x, y);
 
-	double new_width = real_width * factor;
+  double new_width = real_width * factor;
   initialize(new_x, new_y, new_width);
   real_center = new_x;
   imag_center = new_y;
@@ -94,10 +94,10 @@ void MandelbrotApp::get_real_coord_from_screen(double& real_x, double& real_y, d
   constexpr double window_width = model_.window_width;
   constexpr double window_height = model_.window_height;
 
-	double screen_x = (double)(x - (window_width / 2)) / ((double)window_width / 2.0);
-	double screen_y = (double)((window_height / 2) - y) / ((double)window_height / 2.0);
-	real_x = screen_x * (real_width / 2.0) + real_center;
-	real_y = screen_y * (real_width / 2.0) + imag_center;
+  double screen_x = (double)(x - (window_width / 2)) / ((double)window_width / 2.0);
+  double screen_y = (double)((window_height / 2) - y) / ((double)window_height / 2.0);
+  real_x = screen_x * (real_width / 2.0) + real_center;
+  real_y = screen_y * (real_width / 2.0) + imag_center;
 }
 
 void MandelbrotApp::calculate_iterates(double x, double y)
@@ -148,30 +148,27 @@ void MandelbrotApp::calculate_iterates(double x, double y)
   cout << "iterate_count: " << i << endl;
   cout << "Bounding box: " << "(" << min_real << ", " << min_imag << ")-("
     << max_real << ", " << max_imag << ")" << endl;
-
-  // TODO: How do I get this signal out to the main program?
-  //glutPostWindowRedisplay(iterates_window); 
 }
 
 void MandelbrotApp::initialize(double real_center, double imag_center, double width)
 {
-	cout << "real: " << real_center << " imag: " << imag_center << " width: " << width << endl;
+  cout << "real: " << real_center << " imag: " << imag_center << " width: " << width << endl;
 
-	double real_start = real_center - width / 2.0;
-	double real;
-	double imag = imag_center + width / 2.0;
-	double real_inc = width / static_cast<double>(model_.window_width);
-	double imag_inc = width / static_cast<double>(model_.window_height);
+  double real_start = real_center - width / 2.0;
+  double real;
+  double imag = imag_center + width / 2.0;
+  double real_inc = width / static_cast<double>(model_.window_width);
+  double imag_inc = width / static_cast<double>(model_.window_height);
 
-	unsigned x, y;
-	for (y = 0; y < model_.window_height; ++y, imag -= imag_inc) {
-		for (real = real_start, x = 0; x < model_.window_width; ++x,real += real_inc) {
-			if (y % bin_width == 0 && x % bin_width == 0) {
-				bin_finished[y / bin_width][x / bin_width] = false;
-			}
-			new (&pixels[y][x]) Pixel(real, imag, real_inc);
-		}
-	}
+  unsigned x, y;
+  for (y = 0; y < model_.window_height; ++y, imag -= imag_inc) {
+    for (real = real_start, x = 0; x < model_.window_width; ++x,real += real_inc) {
+      if (y % bin_width == 0 && x % bin_width == 0) {
+        bin_finished[y / bin_width][x / bin_width] = false;
+      }
+      new (&pixels[y][x]) Pixel(real, imag, real_inc);
+    }
+  }
 
-	iteration = 0;
+  iteration = 0;
 }

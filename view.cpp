@@ -53,21 +53,21 @@ void MandelbrotView::render_iterates()
 
 void MandelbrotView::render_scene()
 {
-    glBindTexture(GL_TEXTURE_2D, parent_.model().mandel_texture);
-		constexpr GLint level = 0;
-    constexpr GLint border = 0;
-    glTexImage2D(GL_TEXTURE_2D, level, GL_RGB8,
-                 parent_.model().window_width, parent_.model().window_height,
-                 border, GL_RGB,
-                 GL_UNSIGNED_BYTE, parent_.model().texture_data);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glBindTexture(GL_TEXTURE_2D, parent_.model().mandel_texture);
+  constexpr GLint level = 0;
+  constexpr GLint border = 0;
+  glTexImage2D(GL_TEXTURE_2D, level, GL_RGB8,
+               parent_.model().window_width, parent_.model().window_height,
+               border, GL_RGB,
+               GL_UNSIGNED_BYTE, parent_.model().texture_data);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-    glEnd();
-    glFlush();
+  glBegin(GL_QUADS);
+  glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
+  glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
+  glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
+  glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
+  glEnd();
+  glFlush();
 }

@@ -28,13 +28,13 @@ void mouseHandler(int button, int state, int x, int y)
       glutPostWindowRedisplay(iterates_window);
     }
   } else {
-      if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
-          button_pressed = true;
-          factor = 0.666667;
-      } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
-          button_pressed = true;
-          factor = 1.5;
-      }
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+      button_pressed = true;
+      factor = 0.666667;
+    } else if (button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+      button_pressed = true;
+      factor = 1.5;
+    }
   }
 
   if (button_pressed) {
@@ -50,7 +50,7 @@ void render_iterates() {
   app->view().render_iterates();
 }
 
-int main(int argc, char * argv[])
+int main(int argc, char* argv[])
 {
   app = std::make_unique<MandelbrotApp>();
 
