@@ -56,8 +56,9 @@ int main(int argc, char* argv[])
   glutInitDisplayMode(GLUT_SINGLE | GLUT_RGBA);
   glutInitWindowPosition(100, 100);
 
-  glutInitWindowSize(MandelbrotApp::Model::window_width,
-                     MandelbrotApp::Model::window_height);
+  constexpr std::uint32_t window_width = MandelbrotApp::Model::window_width;
+  constexpr std::uint32_t window_height = MandelbrotApp::Model::window_height;
+  glutInitWindowSize(window_width, window_height);
   main_window = glutCreateWindow("Gradual Mandelbrot Rendering");
   
   app = std::make_unique<MandelbrotApp>();
@@ -65,6 +66,7 @@ int main(int argc, char* argv[])
   glutIdleFunc(idleFunc);
   glutMouseFunc(mouseHandler);
 
+  glutInitWindowPosition(100 + window_width, 100);
   // Create additional window for looking at iterates.
   iterates_window = glutCreateWindow("Iterate View");
   glutDisplayFunc(render_iterates);

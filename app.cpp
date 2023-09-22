@@ -61,11 +61,6 @@ void MandelbrotApp::main_loop()
   for (unsigned i = 0; i < thread_count; ++i) {
     threads[i].join();
   }
-
-  ++iteration;
-  if (iteration % 100 == 0) {
-    std::cout << "iteration " << iteration << std::endl;
-  }
 }
 
 void MandelbrotApp::update_iterates(int x, int y)
@@ -173,6 +168,4 @@ void MandelbrotApp::initialize(double real_center, double imag_center, double wi
       new (&pixels[y][x]) Pixel(real, imag, real_inc);
     }
   }
-
-  iteration = 0;
 }
