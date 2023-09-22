@@ -5,21 +5,21 @@
 MandelbrotApp::MandelbrotApp()
   : view_(*this)
 {
-  initialize(real_center, imag_center, real_width);
+  initialize(real_center_, imag_center_, real_width_);
 }
 
 void MandelbrotApp::doBin()
 {
-  for (std::pair<int, int> p = *bin_queue.pop();
+  for (std::pair<int, int> p = *bin_queue_.pop();
        p != std::pair<int, int>(-1, -1);
-       p = *bin_queue.pop())
+       p = *bin_queue_.pop())
   {
     bool all_finished = true;
-    unsigned y_start = p.second * bin_width;
-    unsigned x_start = p.first * bin_width;
-    for (unsigned y = y_start; y < y_start + bin_width; ++y) {
-      for (unsigned x = x_start; x < x_start + bin_width; ++x) {
-        Pixel& px = pixels[y][x];
+    unsigned y_start = p.second * bin_width_;
+    unsigned x_start = p.first * bin_width_;
+    for (unsigned y = y_start; y < y_start + bin_width_; ++y) {
+      for (unsigned x = x_start; x < x_start + bin_width_; ++x) {
+        Pixel& px = pixels_[y][x];
         px.iterate();
         unsigned char& r = model_.texture_data[model_.window_width*3*y + 3*x + 0];
         unsigned char& g = model_.texture_data[model_.window_width*3*y + 3*x + 1];
@@ -31,7 +31,7 @@ void MandelbrotApp::doBin()
       }
     }
     if (all_finished) {
-      bin_finished[p.second][p.first] = true;
+      bin_finished_[p.second][p.first] = true;
     }
   }
 }
@@ -39,19 +39,19 @@ void MandelbrotApp::doBin()
 void MandelbrotApp::main_loop()
 {
   const unsigned thread_count =
-      std::min(std::thread::hardware_concurrency(), max_thread_count);
+      std::min(std::thread::hardware_concurrency(), max_thread_count_);
   // TODO: Use a thread pool. This is needlessly expensive.
   std::vector<std::thread> threads(thread_count);
 
-  for (unsigned y = 0; y < model_.window_height / bin_width; ++y) {
-    for (unsigned x = 0; x < model_.window_width / bin_width; ++x) {
-      if (!bin_finished[y][x]) {
-        bin_queue.push(std::pair<unsigned, unsigned>(x, y));
+  for (unsigned y = 0; y < model_.window_height / bin_width_; ++y) {
+    for (unsigned x = 0; x < model_.window_width / bin_width_; ++x) {
+      if (!bin_finished_[y][x]) {
+        bin_queue_.push(std::pair<unsigned, unsigned>(x, y));
       }
     }
   }
   for (unsigned i = 0; i < thread_count; ++i) {
-    bin_queue.push(std::pair<int, int>(-1, -1));
+    bin_queue_.push(std::pair<int, int>(-1, -1));
   }
 
   for (unsigned i = 0; i < thread_count; ++i) {
@@ -80,11 +80,11 @@ void MandelbrotApp::zoom(int x, int y, double factor)
 
   get_real_coord_from_screen(new_x, new_y, x, y);
 
-  double new_width = real_width * factor;
+  double new_width = real_width_ * factor;
   initialize(new_x, new_y, new_width);
-  real_center = new_x;
-  imag_center = new_y;
-  real_width = new_width;
+  real_center_ = new_x;
+  imag_center_ = new_y;
+  real_width_ = new_width;
 }
 
 void MandelbrotApp::get_real_coord_from_screen(double& real_x, double& real_y, double x, double y)
@@ -94,8 +94,8 @@ void MandelbrotApp::get_real_coord_from_screen(double& real_x, double& real_y, d
 
   double screen_x = (double)(x - (window_width / 2)) / ((double)window_width / 2.0);
   double screen_y = (double)((window_height / 2) - y) / ((double)window_height / 2.0);
-  real_x = screen_x * (real_width / 2.0) + real_center;
-  real_y = screen_y * (real_width / 2.0) + imag_center;
+  real_x = screen_x * (real_width_ / 2.0) + real_center_;
+  real_y = screen_y * (real_width_ / 2.0) + imag_center_;
 }
 
 void MandelbrotApp::calculate_iterates(double x, double y)
@@ -162,10 +162,10 @@ void MandelbrotApp::initialize(double real_center, double imag_center, double wi
   unsigned x, y;
   for (y = 0; y < model_.window_height; ++y, imag -= imag_inc) {
     for (real = real_start, x = 0; x < model_.window_width; ++x,real += real_inc) {
-      if (y % bin_width == 0 && x % bin_width == 0) {
-        bin_finished[y / bin_width][x / bin_width] = false;
+      if (y % bin_width_ == 0 && x % bin_width_ == 0) {
+        bin_finished_[y / bin_width_][x / bin_width_] = false;
       }
-      new (&pixels[y][x]) Pixel(real, imag, real_inc);
+      new (&pixels_[y][x]) Pixel(real, imag, real_inc);
     }
   }
 }

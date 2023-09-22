@@ -7,7 +7,7 @@ MandelbrotView::MandelbrotView(const MandelbrotApp& parent)
   : parent_(parent)
 {
   glEnable(GL_TEXTURE_2D);
-  glGenTextures(1, &mandel_texture);
+  glGenTextures(1, &mandel_texture_);
 }
 
 void MandelbrotView::render_iterates()
@@ -57,7 +57,7 @@ void MandelbrotView::render_iterates()
 
 void MandelbrotView::render_scene()
 {
-  glBindTexture(GL_TEXTURE_2D, mandel_texture);
+  glBindTexture(GL_TEXTURE_2D, mandel_texture_);
   constexpr GLint level = 0;
   constexpr GLint border = 0;
   glTexImage2D(GL_TEXTURE_2D, level, GL_RGB8,

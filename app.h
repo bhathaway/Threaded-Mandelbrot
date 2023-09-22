@@ -47,20 +47,19 @@ private:
   MandelbrotView view_;
   Model model_;
 
-  double real_center = -0.85;
-  double imag_center = 0.0;
-  double real_width = 2.8;
+  double real_center_ = -0.85;
+  double imag_center_ = 0.0;
+  double real_width_ = 2.8;
 
-  // Main window related globals:
-  static constexpr unsigned bin_width = 4;
+  static constexpr unsigned bin_width_ = 4;
 
-  bool bin_finished[Model::window_height / bin_width][Model::window_width  / bin_width];
+  bool bin_finished_[Model::window_height / bin_width_][Model::window_width / bin_width_];
 
-  Pixel pixels[Model::window_height][Model::window_width];
+  Pixel pixels_[Model::window_height][Model::window_width];
 
-  static constexpr unsigned num_bins =
-    (Model::window_height / bin_width) * (Model::window_width / bin_width);
+  static constexpr unsigned num_bins_ =
+    (Model::window_height / bin_width_) * (Model::window_width / bin_width_);
 
-  static constexpr unsigned max_thread_count = 128;
-  BlockingQueue<std::pair<int, int>, num_bins + max_thread_count> bin_queue;
+  static constexpr unsigned max_thread_count_ = 128;
+  BlockingQueue<std::pair<int, int>, num_bins_ + max_thread_count_> bin_queue_;
 };

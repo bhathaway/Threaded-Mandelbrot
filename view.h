@@ -17,5 +17,5 @@ public:
 
 private:
   const MandelbrotApp& parent_;
-  TextureHandle mandel_texture;
+  TextureHandle mandel_texture_;
 };
